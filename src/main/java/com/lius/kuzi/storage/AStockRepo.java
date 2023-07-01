@@ -41,8 +41,8 @@ public class AStockRepo extends AbstractVerticle {
 
   private static final String GET_SUBSCRIBE_STOCK_SQL = "SELECT * FROM astock_subscribe_stock";
 
-  public AStockRepo(JsonObject config, String name) {
-    this.repoUtil = new RepoUtil(vertx, config);
+  public AStockRepo(RepoUtil repoUtil, String name) {
+    this.repoUtil = repoUtil;
     this.name = name;
   }
 

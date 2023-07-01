@@ -21,19 +21,19 @@ import static com.lius.kuzi.constant.CommonConstant.DISPATCHER;
 public class HttpDispatcher extends AbstractVerticle {
 
   private final RepoUtil repoUtil;
-  private final WebClient client;
+  private WebClient client;
 
   private static final String GET_SUBSCRIBER_SQL = "SELECT * FROM subscriber WHERE data_type = #{dataType}";
 
-  public HttpDispatcher(JsonObject config) {
-    repoUtil = new RepoUtil(vertx, config);
-    WebClientOptions options = new WebClientOptions().setKeepAlive(false);
-    client = WebClient.create(vertx, options);
+  public HttpDispatcher(RepoUtil repoUtil) {
+    this.repoUtil = repoUtil;
   }
 
   @Override
   public void start() throws Exception {
     vertx.eventBus().consumer(DISPATCHER, this::consume);
+    WebClientOptions options = new WebClientOptions().setKeepAlive(false);
+    this.client = WebClient.create(vertx, options);
   }
 
   private void consume(Message<JsonObject> message) {
