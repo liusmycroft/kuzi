@@ -1,23 +1,57 @@
 package com.lius.kuzi;
 
+import com.lius.kuzi.crawler.AStockCrawler;
+import com.lius.kuzi.dispatcher.HttpDispatcher;
+import com.lius.kuzi.properties.TickerProperties;
+import com.lius.kuzi.storage.AStockRepo;
+import com.lius.kuzi.ticker.AStockTradeTimeTicker;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
+import io.vertx.core.Verticle;
+import io.vertx.core.json.JsonObject;
 
 public class MainVerticle extends AbstractVerticle {
 
+  private static final String aStockName = "astock";
+
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
-    vertx.createHttpServer().requestHandler(req -> {
-      req.response()
-        .putHeader("content-type", "text/plain")
-        .end("Hello from Vert.x!");
-    }).listen(8888, http -> {
-      if (http.succeeded()) {
-        startPromise.complete();
-        System.out.println("HTTP server started on port 8888");
+
+    JsonObject dbConfig = JsonObject.of("host", "127.0.0.1")
+      .put("database", "test")
+      .put("user", "test")
+      .put("password", "test");
+
+    Future.all(
+      deployVerticle(new AStockTradeTimeTicker(new TickerProperties()), new DeploymentOptions()),
+      deployVerticle(new AStockCrawler(new JsonObject(), aStockName), new DeploymentOptions()),
+      deployVerticle(new AStockRepo(dbConfig, aStockName), new DeploymentOptions()),
+      deployVerticle(new HttpDispatcher(dbConfig), new DeploymentOptions())
+    );
+  }
+
+  private Future<Void> deployVerticle(Verticle verticle, DeploymentOptions options) {
+    Promise<Void> promise = Promise.promise();
+    if (options.getInstances() == 0) {
+      promise.complete();
+    } else {
+      vertx.deployVerticle(verticle, options, report(promise));
+    }
+    return promise.future();
+  }
+
+  private <T> Handler<AsyncResult<T>> report(Promise<Void> promise) {
+    return ar -> {
+      if (ar.succeeded()) {
+        promise.complete();
       } else {
-        startPromise.fail(http.cause());
+        ar.cause().printStackTrace();
+        promise.fail(ar.cause());
       }
-    });
+    };
   }
 }
